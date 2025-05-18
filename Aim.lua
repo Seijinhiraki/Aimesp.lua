@@ -1,5 +1,5 @@
--- == UNIVERSAL AIMBOT + ESP v2.0 ==
--- Script atualizado com todas as melhorias solicitadas!
+-- == UNIVERSAL AIMBOT + ESP v2.1 ==
+-- Script atualizado com todas as melhorias + botão de Lock FOV
 
 local scriptContent = [[
 -- == SERVICES ==
@@ -19,6 +19,7 @@ local Settings = {
     WallCheck = true,
     FovSize = 100,
     AimSpeed = 1,
+    LockFOV = false, -- NOVA CONFIGURAÇÃO ADICIONADA
 }
 
 -- == GUI SETUP ==
@@ -117,11 +118,27 @@ WallCheckToggle.MouseButton1Click:Connect(function()
     WallCheckToggle.BackgroundColor3 = Settings.WallCheck and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(45, 45, 45)
 end)
 
+-- == LOCK FOV BUTTON ==
+local LockFOVButton = Instance.new("TextButton")
+LockFOVButton.Text = "Lock FOV: OFF"
+LockFOVButton.Size = UDim2.new(0, 280, 0, 30)
+LockFOVButton.Position = UDim2.new(0, 10, 0, 120)
+LockFOVButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+LockFOVButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+LockFOVButton.BorderSizePixel = 0
+LockFOVButton.Parent = Window
+
+LockFOVButton.MouseButton1Click:Connect(function()
+    Settings.LockFOV = not Settings.LockFOV
+    LockFOVButton.Text = "Lock FOV: " .. (Settings.LockFOV and "ON" or "OFF")
+    LockFOVButton.BackgroundColor3 = Settings.LockFOV and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(45, 45, 45)
+end)
+
 -- == FOV SLIDER ==
 local FovSlider = Instance.new("TextBox")
 FovSlider.PlaceholderText = "FOV Size ("..Settings.FovSize..")"
 FovSlider.Size = UDim2.new(0, 280, 0, 30)
-FovSlider.Position = UDim2.new(0, 10, 0, 120)
+FovSlider.Position = UDim2.new(0, 10, 0, 160)
 FovSlider.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 FovSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
 FovSlider.BorderSizePixel = 0
@@ -143,7 +160,7 @@ end)
 local SpeedSlider = Instance.new("TextBox")
 SpeedSlider.PlaceholderText = "Aim Speed ("..Settings.AimSpeed..")"
 SpeedSlider.Size = UDim2.new(0, 280, 0, 30)
-SpeedSlider.Position = UDim2.new(0, 10, 0, 160)
+SpeedSlider.Position = UDim2.new(0, 10, 0, 200)
 SpeedSlider.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 SpeedSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
 SpeedSlider.BorderSizePixel = 0
@@ -165,7 +182,7 @@ end)
 local EspToggle = Instance.new("TextButton")
 EspToggle.Text = "ESP: OFF"
 EspToggle.Size = UDim2.new(0, 280, 0, 30)
-EspToggle.Position = UDim2.new(0, 10, 0, 200)
+EspToggle.Position = UDim2.new(0, 10, 0, 240)
 EspToggle.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 EspToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
 EspToggle.BorderSizePixel = 0
@@ -188,9 +205,14 @@ FovCircle.Visible = true
 
 -- == MAIN LOOP ==
 RunService.RenderStepped:Connect(function()
-    -- Update FOV
+    -- Update FOV Position
+    if Settings.LockFOV then
+        FovCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    else
+        FovCircle.Position = Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y)
+    end
+
     FovCircle.Radius = Settings.FovSize
-    FovCircle.Position = Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y)
     FovCircle.Color = Settings.AimbotEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
 
     -- Aimbot
