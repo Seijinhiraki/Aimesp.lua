@@ -1,277 +1,185 @@
--- == CONFIGURAÇÕES ==
-local Enabled = false
-local AimbotEnabled = false
-local WallCheck = true
-local FovSize = 100
-local AimSpeed = 1
-local EspEnabled = false
+-- [!] Execute no Delta Executor
 
--- == SERVICES ==
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local CoreGui = game:GetService("CoreGui")
-local HttpService = game:GetService("HttpService")
+local plr = game.Players.LocalPlayer
+local mouse = plr:GetMouse()
+local camera = workspace.CurrentCamera
+local runService = game:GetService("RunService")
+local userInputService = game:GetService("UserInputService")
 
-local LocalPlayer = Players.LocalPlayer
-local Mouse = LocalPlayer:GetMouse()
+-- Variáveis
+local aimbotEnabled = false
+local espEnabled = false
+local lockFOV = false
+local fovSize = 100
+local targetColor = Color3.fromRGB(255, 0, 0)
+local closestPlayer = nil
 
--- == MAIN GUI ==
-local MainGui = Instance.new("ScreenGui")
-MainGui.Name = "UniversalAimbotESP"
-MainGui.ResetOnSpawn = false
-MainGui.Parent = CoreGui
+-- GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AimHub"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = plr.PlayerGui
 
--- == WINDOW ==
-local Window = Instance.new("Frame")
-Window.Size = UDim2.new(0, 300, 0, 400)
-Window.Position = UDim2.new(0.7, 0, 0.2, 0)
-Window.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-Window.BorderSizePixel = 0
-Window.Visible = false
-Window.Parent = MainGui
+local mainFrame = Instance.new("Frame")
+mainFrame.Size = UDim2.new(0, 300, 0, 200)
+mainFrame.Position = UDim2.new(0.5, -150, 0.5, -100)
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
 
--- == DRAGGABLE ==
-local dragging
-local dragInput
-local dragStart
-local startPos
+-- Título
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 30)
+title.BackgroundTransparency = 1
+title.Text = "🎯 AimHub"
+title.TextColor3 = Color3.fromRGB(255, 87, 34)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 18
+title.Parent = mainFrame
 
-local function updateInput(input)
-    local delta = input.Position - dragStart
-    Window.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-end
+-- Botões
+local aimbotButton = Instance.new("TextButton")
+aimbotButton.Position = UDim2.new(0.1, 0, 0.2, 0)
+aimbotButton.Size = UDim2.new(0.8, 0, 0, 30)
+aimbotButton.Text = "Aimbot: OFF"
+aimbotButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+aimbotButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+aimbotButton.Font = Enum.Font.Gotham
+aimbotButton.Parent = mainFrame
 
-Window.InputBegan:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        dragging = true
-        dragStart = input.Position
-        startPos = Window.Position
+local espButton = Instance.new("TextButton")
+espButton.Position = UDim2.new(0.1, 0, 0.4, 0)
+espButton.Size = UDim2.new(0.8, 0, 0, 30)
+espButton.Text = "ESP: OFF"
+espButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+espButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+espButton.Font = Enum.Font.Gotham
+espButton.Parent = mainFrame
 
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
-    end
+local lockFOVButton = Instance.new("TextButton")
+lockFOVButton.Position = UDim2.new(0.1, 0, 0.6, 0)
+lockFOVButton.Size = UDim2.new(0.8, 0, 0, 30)
+lockFOVButton.Text = "FOV Fixo: OFF"
+lockFOVButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+lockFOVButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+lockFOVButton.Font = Enum.Font.Gotham
+lockFOVButton.Parent = mainFrame
+
+-- Funções dos botões
+aimbotButton.MouseButton1Click:Connect(function()
+    aimbotEnabled = not aimbotEnabled
+    aimbotButton.Text = "Aimbot: " .. (aimbotEnabled and "ON" or "OFF")
+    aimbotButton.BackgroundColor3 = aimbotEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(60, 60, 60)
 end)
 
-Window.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement then
-        dragInput = input
-    end
+espButton.MouseButton1Click:Connect(function()
+    espEnabled = not espEnabled
+    espButton.Text = "ESP: " .. (espEnabled and "ON" or "OFF")
+    espButton.BackgroundColor3 = espEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(60, 60, 60)
 end)
 
-RunService.RenderStepped:Connect(function()
-    if dragging and dragInput then
-        updateInput(dragInput)
-    end
+lockFOVButton.MouseButton1Click:Connect(function()
+    lockFOV = not lockFOV
+    lockFOVButton.Text = "FOV Fixo: " .. (lockFOV and "ON" or "OFF")
+    lockFOVButton.BackgroundColor3 = lockFOV and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(60, 60, 60)
 end)
 
--- == TOGGLE BUTTON ==
-local ToggleButton = Instance.new("TextButton")
-ToggleButton.Text = "Abrir Menu"
-ToggleButton.Size = UDim2.new(0, 100, 0, 30)
-ToggleButton.Position = UDim2.new(0.85, 0, 0.02, 0)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.BorderSizePixel = 0
-ToggleButton.Parent = MainGui
-
-ToggleButton.MouseButton1Click:Connect(function()
-    Window.Visible = not Window.Visible
-    ToggleButton.Text = Window.Visible and "Fechar Menu" or "Abrir Menu"
-end)
-
--- == AIMBOT SECTION ==
-local AimbotToggle = Instance.new("TextButton")
-AimbotToggle.Text = "Aimbot: OFF"
-AimbotToggle.Size = UDim2.new(0, 280, 0, 30)
-AimbotToggle.Position = UDim2.new(0, 10, 0, 10)
-AimbotToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-AimbotToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-AimbotToggle.BorderSizePixel = 0
-AimbotToggle.Parent = Window
-
-AimbotToggle.MouseButton1Click:Connect(function()
-    AimbotEnabled = not AimbotEnabled
-    AimbotToggle.Text = "Aimbot: " .. (AimbotEnabled and "ON" or "OFF")
-end)
-
--- == WALL CHECK ==
-local WallCheckToggle = Instance.new("TextButton")
-WallCheckToggle.Text = "Wall Detect: ON"
-WallCheckToggle.Size = UDim2.new(0, 280, 0, 30)
-WallCheckToggle.Position = UDim2.new(0, 10, 0, 50)
-WallCheckToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-WallCheckToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-WallCheckToggle.BorderSizePixel = 0
-WallCheckToggle.Parent = Window
-
-WallCheckToggle.MouseButton1Click:Connect(function()
-    WallCheck = not WallCheck
-    WallCheckToggle.Text = "Wall Detect: " .. (WallCheck and "ON" or "OFF")
-end)
-
--- == FOV SLIDER ==
-local FovSlider = Instance.new("TextBox")
-FovSlider.PlaceholderText = "Tamanho do FOV (ex: 100)"
-FovSlider.Size = UDim2.new(0, 280, 0, 30)
-FovSlider.Position = UDim2.new(0, 10, 0, 90)
-FovSlider.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-FovSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
-FovSlider.BorderSizePixel = 0
-FovSlider.ClearTextOnFocus = false
-FovSlider.Text = tostring(FovSize)
-FovSlider.Parent = Window
-
-FovSlider.FocusLost:Connect(function()
-    FovSize = tonumber(FovSlider.Text) or FovSize
-end)
-
--- == SPEED SLIDER ==
-local SpeedSlider = Instance.new("TextBox")
-SpeedSlider.PlaceholderText = "Velocidade do Aimbot (ex: 1)"
-SpeedSlider.Size = UDim2.new(0, 280, 0, 30)
-SpeedSlider.Position = UDim2.new(0, 10, 0, 130)
-SpeedSlider.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-SpeedSlider.TextColor3 = Color3.fromRGB(255, 255, 255)
-SpeedSlider.BorderSizePixel = 0
-SpeedSlider.ClearTextOnFocus = false
-SpeedSlider.Text = tostring(AimSpeed)
-SpeedSlider.Parent = Window
-
-SpeedSlider.FocusLost:Connect(function()
-    AimSpeed = tonumber(SpeedSlider.Text) or AimSpeed
-end)
-
--- == RESET SPEED ==
-local ResetSpeedBtn = Instance.new("TextButton")
-ResetSpeedBtn.Text = "Redefinir Velocidade"
-ResetSpeedBtn.Size = UDim2.new(0, 280, 0, 30)
-ResetSpeedBtn.Position = UDim2.new(0, 10, 0, 170)
-ResetSpeedBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-ResetSpeedBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ResetSpeedBtn.BorderSizePixel = 0
-ResetSpeedBtn.Parent = Window
-
-ResetSpeedBtn.MouseButton1Click:Connect(function()
-    AimSpeed = 1
-    SpeedSlider.Text = "1"
-end)
-
--- == ESP TOGGLE ==
-local EspToggle = Instance.new("TextButton")
-EspToggle.Text = "ESP: OFF"
-EspToggle.Size = UDim2.new(0, 280, 0, 30)
-EspToggle.Position = UDim2.new(0, 10, 0, 210)
-EspToggle.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-EspToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-EspToggle.BorderSizePixel = 0
-EspToggle.Parent = Window
-
-EspToggle.MouseButton1Click:Connect(function()
-    EspEnabled = not EspEnabled
-    EspToggle.Text = "ESP: " .. (EspEnabled and "ON" or "OFF")
-end)
-
--- == DRAWING FUNCTIONS ==
+-- Desenho do FOV
 local fovCircle = Drawing.new("Circle")
+fovCircle.Radius = fovSize
 fovCircle.Thickness = 1
-fovCircle.NumSides = 64
-fovCircle.Radius = FovSize
-fovCircle.Color = Color3.fromRGB(255, 0, 0)
+fovCircle.Color = targetColor
 fovCircle.Filled = false
 fovCircle.Visible = true
 
-RunService.RenderStepped:Connect(function()
-    fovCircle.Position = Vector2.new(Mouse.X, Mouse.Y)
-    fovCircle.Radius = FovSize
-    fovCircle.Color = AimbotEnabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0)
-end)
+-- Aimbot
+function getClosestPlayer()
+    local closestDistance = math.huge
+    local target = nil
+    local localPos = camera.CFrame.Position
 
--- == GET NEAREST PLAYER ==
-function GetNearestPlayer()
-    local closest, dist = nil, math.huge
-    for _, v in pairs(Players:GetPlayers()) do
-        if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
-            local pos, onScreen = Camera:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
-            local mag = (Vector2.new(pos.X, pos.Y) - Vector2.new(Mouse.X, Mouse.Y)).magnitude
-            if onScreen and mag < dist and mag < FovSize then
-                if WallCheck then
-                    local rayParams = RaycastParams.new()
-                    rayParams.FilterDescendantsInstances = {LocalPlayer.Character, v.Character}
-                    rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                    
-                    local rayResult = workspace:Raycast(LocalPlayer.Character.Head.Position, v.Character.Head.Position - LocalPlayer.Character.Head.Position, rayParams)
-                    if rayResult and rayResult.Instance and rayResult.Instance:IsDescendantOf(v.Character) then
-                        closest = v
-                        dist = mag
-                    end
-                else
-                    closest = v
-                    dist = mag
+    for _, v in pairs(game.Players:GetPlayers()) do
+        if v ~= plr and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+            local screenPos, onScreen = camera:WorldToViewportPoint(v.Character.HumanoidRootPart.Position)
+            if onScreen then
+                local mousePos = userInputService:GetMouseLocation()
+                local distance = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(mousePos.X, mousePos.Y)).Magnitude
+                if distance < closestDistance and distance <= fovSize then
+                    closestDistance = distance
+                    target = v
                 end
             end
         end
     end
-    return closest
+    return target
 end
 
--- == AIMBOT LOOP ==
-RunService.RenderStepped:Connect(function()
-    if AimbotEnabled then
-        local target = GetNearestPlayer()
-        if target and target.Character and target.Character:FindFirstChild("Head") then
-            local lookVector = (target.Character.Head.Position - Camera.CFrame.Position).unit
-            Mouse.Hit = CFrame.fromMatrix(Camera.CFrame.Position, lookVector, Camera.CFrame.UpVector, Camera.CFrame.LookVector) * CFrame.Angles(0, 0, 0)
+-- Loop principal
+runService.RenderStepped:Connect(function()
+    -- Atualiza posição do FOV
+    if not lockFOV then
+        fovCircle.Position = userInputService:GetMouseLocation()
+    else
+        fovCircle.Position = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+    end
+    fovCircle.Radius = fovSize
+
+    -- Aimbot
+    if aimbotEnabled then
+        closestPlayer = getClosestPlayer()
+        if closestPlayer and closestPlayer.Character and closestPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local root = closestPlayer.Character.HumanoidRootPart
+            local lookAt = root.Position + root.Velocity * 0.05
+            camera.CFrame = CFrame.lookAt(camera.CFrame.Position, lookAt)
         end
     end
 end)
 
--- == ESP FUNCTION ==
+-- ESP
+local espBoxes = {}
+
 spawn(function()
     while true do
-        if EspEnabled then
-            for _, v in pairs(Players:GetPlayers()) do
-                if v ~= LocalPlayer and v.Character and v.Character:FindFirstChild("Humanoid") then
-                    local hrp = v.Character:FindFirstChild("HumanoidRootPart")
-                    if hrp then
-                        local pos, onScreen = Camera:WorldToViewportPoint(hrp.Position)
-                        if onScreen then
-                            local health = v.Character.Humanoid.Health
-                            local maxHealth = v.Character.Humanoid.MaxHealth
-                            local hpPercent = health / maxHealth
+        wait(0.1)
+        if espEnabled then
+            for _, v in pairs(game.Players:GetPlayers()) do
+                if v ~= plr and v.Character and v.Character:FindFirstChild("HumanoidRootPart") then
+                    local part = v.Character.HumanoidRootPart
+                    local pos, onScreen = camera:WorldToViewportPoint(part.Position)
 
-                            local espBox = Drawing.new("Square")
-                            espBox.Size = Vector2.new(100, 100)
-                            espBox.Position = Vector2.new(pos.X - 50, pos.Y - 50)
-                            espBox.Color = Color3.fromRGB(255, 0, 0)
-                            espBox.Thickness = 1
-                            espBox.Filled = false
+                    if not espBoxes[v] then
+                        espBoxes[v] = {
+                            box = Drawing.new("Square"),
+                            text = Drawing.new("Text")
+                        }
+                    end
 
-                            local nameTag = Drawing.new("Text")
-                            nameTag.Text = v.Name
-                            nameTag.Position = Vector2.new(pos.X, pos.Y - 70)
-                            nameTag.Size = 16
-                            nameTag.Color = Color3.fromRGB(255, 255, 255)
-                            nameTag.Center = true
+                    local size = 5
+                    espBoxes[v].box.Size = Vector2.new(10 * size, 10 * size)
+                    espBoxes[v].box.Position = Vector2.new(pos.X - 5 * size, pos.Y - 5 * size)
+                    espBoxes[v].box.Color = targetColor
+                    espBoxes[v].box.Filled = false
+                    espBoxes[v].box.Thickness = 2
+                    espBoxes[v].box.Visible = true
 
-                            local healthBar = Drawing.new("Square")
-                            healthBar.Size = Vector2.new(100 * hpPercent, 5)
-                            healthBar.Position = Vector2.new(pos.X - 50, pos.Y - 60)
-                            healthBar.Color = Color3.fromRGB(0, 255, 0)
-                            healthBar.Filled = true
-
-                            wait()
-                            espBox.Visible = false
-                            nameTag.Visible = false
-                            healthBar.Visible = false
-                        end
+                    espBoxes[v].text.Text = v.Name
+                    espBoxes[v].text.Size = 16
+                    espBoxes[v].text.Position = Vector2.new(pos.X, pos.Y - 20)
+                    espBoxes[v].text.Color = targetColor
+                    espBoxes[v].text.Center = true
+                    espBoxes[v].text.Visible = true
+                else
+                    if espBoxes[v] then
+                        espBoxes[v].box.Visible = false
+                        espBoxes[v].text.Visible = false
                     end
                 end
             end
+        else
+            for _, data in pairs(espBoxes) do
+                data.box.Visible = false
+                data.text.Visible = false
+            end
         end
-        wait()
     end
 end)
